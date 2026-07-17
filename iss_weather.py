@@ -48,8 +48,7 @@ def get_temperature(latitude: float, longitude: float) -> float:
         return data["current"]["temperature_2m"]
     except requests.exceptions.RequestException as error:
         raise ApiError(f"Meteo API request failed: {error}") from error
-    except ApiError as error:
-        print(error)
+
 
 
 def main() -> None:
@@ -68,11 +67,11 @@ def main() -> None:
     else:
         try:
             fallback_temperature = get_temperature(FALLBACK_LAT, FALLBACK_LON)
-            print(f"ERROR: All attempts failed. Using fallback coordinates ({FALLBACK_LAT, FALLBACK_LON}). Temperature {fallback_temperature}")
+            print(f"ERROR: All attempts failed. Using fallback coordinates ({FALLBACK_LAT}, {FALLBACK_LON}). Temperature {fallback_temperature}")
             logger.error(f"All attempts failed. Using fallback coordinates ({FALLBACK_LAT}, {FALLBACK_LON}). Temperature {fallback_temperature}")
         except ApiError as error:
             print(f"ERROR: {error}", file=sys.stderr)
-            logger.error({error})
+            logger.error(f"{error}")
             sys.exit(1)
 
 if __name__ == "__main__":
