@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import time
 
 import requests
@@ -24,7 +25,7 @@ class ApiError(Exception):
 
 def get_iss_position() -> tuple[float, float]:
     try:
-        response = requests.get("htps://api.wheretheiss.at/v1/satellites/25544", timeout=REQUEST_TIMEOUT)
+        response = requests.get("https://api.wheretheiss.at/v1/satellites/25544", timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         data = response.json()
         logger.info("Connection to ISS API success")
@@ -47,6 +48,8 @@ def get_temperature(latitude: float, longitude: float) -> float:
         return data["current"]["temperature_2m"]
     except requests.exceptions.RequestException as error:
         raise ApiError(f"Meteo API request failed: {error}") from error
+    except ApiError as error:
+        print(error)
 
 
 def main() -> None:
@@ -56,16 +59,21 @@ def main() -> None:
             temperature = get_temperature(latitude, longitude)
             print(f"ISS is over: ({latitude}, {longitude})")
             print(f"Ground temperature: {temperature} °C")
-            logger.info(f"Data downloaded successfully: ISS coordinates {latitude, longitude}, temperature {temperature}")
+            logger.info(f"Data downloaded successfully: ISS coordinates ({latitude}, {longitude}), temperature {temperature}")
             break
         except ApiError as error:
             logger.warning(f"Attempt {attempt} failed {error}.")
             if attempt < 3:
                 time.sleep(1)
     else:
-        print(f"ERROR: All attempts failed. Using fallback coordinates {FALLBACK_LAT, FALLBACK_LON}. Temperature {get_temperature(FALLBACK_LAT, FALLBACK_LON)}")
-        logger.error(f"All attempts failed. Using fallback coordinates {FALLBACK_LAT, FALLBACK_LON}. Temperature {get_temperature(FALLBACK_LAT, FALLBACK_LON)}")
-        print(get_temperature(FALLBACK_LAT, FALLBACK_LON))
+        try:
+            fallback_temperature = get_temperature(FALLBACK_LAT, FALLBACK_LON)
+            print(f"ERROR: All attempts failed. Using fallback coordinates ({FALLBACK_LAT, FALLBACK_LON}). Temperature {fallback_temperature}")
+            logger.error(f"All attempts failed. Using fallback coordinates ({FALLBACK_LAT}, {FALLBACK_LON}). Temperature {fallback_temperature}")
+        except ApiError as error:
+            print(f"ERROR: {error}", file=sys.stderr)
+            logger.error({error})
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
