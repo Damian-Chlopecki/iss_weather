@@ -1,9 +1,12 @@
 import logging
+import os
 import time
 
 import requests
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+load_dotenv()
 
 logging.basicConfig(
     filename="logs.txt",
@@ -16,13 +19,14 @@ class ApiError(Exception):
 
 def get_iss_position() -> tuple[float, float]:
     try:
-        response = requests.get("https://api.wheretheiss.at/v1/satellites/25544", timeout=15)
+        response = requests.get("https://api.wheretheiss.at/v1/satellites/25544", timeout=int(os.getenv("REQUEST_TIMEOUT")))
         response.raise_for_status()
         data = response.json()
         logger.info("Connection to ISS API success")
         return (data["latitude"], data["longitude"])
     except requests.exceptions.RequestException as error:
-        raise ApiError(f"ISS API request failed: {error}") from error
+        return (float(os.getenv("FALLBACK_LAT")), float(os.getenv("FALLBACK_LON")))
+        # raise ApiError(f"ISS API request failed: {error}") from error
 
 def get_temperature(latitude: float, longitude: float) -> float:
     params = {
@@ -31,7 +35,7 @@ def get_temperature(latitude: float, longitude: float) -> float:
         "current": "temperature_2m"
     }
     try:
-        response = requests.get("https://api.open-meteo.com/v1/forecast", params=params, timeout=15)
+        response = requests.get("https://api.open-meteo.com/v1/forecast", params=params, timeout=int(os.getenv("REQUEST_TIMEOUT")))
         response.raise_for_status()
         data = response.json()
         logger.info("Connection to meteo API success")
